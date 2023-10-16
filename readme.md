@@ -121,3 +121,145 @@
 ![](18.png)
 ![](19.png)
 ![](20.png)
+
+## Kubernetes Configuration
+
+- All the configuration goes in a Kubernetes Cluster goes through a Master Node (Control Planet) with a process called API Server
+- The UI, or API, or CLI all send their Configuration Requests to the API Server which is the only entry point into the Cluster, and the requests have to be in YAML or JSON format.
+
+```yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+  spec:
+    containers:
+      - name: my-app
+        image: my-image
+        env:
+          - name: SOME_ENV
+            value: $SOME_ENV
+        ports:
+          - containerPort: 8080
+```
+
+- With this we are sending a request to configure a component called Deployment which is basically a template/blueprint for creating Pods.
+  ```yml
+  kind: Deployment
+  ```
+- In this specific example we tell Kubernetes to create 2 replica Pods
+
+  ```yml
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  ```
+
+- With each Pod replica having a container based on `my-image` running inside
+
+  ```yml
+  containers:
+    - name: my-app
+      image: my-image
+  ```
+
+- In addition to that we configure what the Environment Variables and Port Number inside the Container inside of the Pod
+
+  ```yml
+  env:
+    - name: SOME_ENV
+      value: $SOME_ENV
+  ports:
+    - containerPort: 8080
+  ```
+
+- The Configuration Requests in Kubernets are DECLARATIVE, we declare what is our desired outcome from Kubernetes and Kubernetes tries to meet those Requirements.
+
+- For example, since we have declared that we wanted 2 Replica Pods of my-app Deployment to be run in the Cluster and one of those Pods dies, the Controller Manager sees that this Desired State and Actual State are now different. The Desired State is 2 and the Actual State is 1. It goes to work to make sure that this Desired State is recovered, automatically restarting the 2nd Replica of that Pod.
+
+![](21.png)
+
+### 3 Parts of a Kubernetes Configuration File
+
+`nginx-deployment.yaml`
+
+```yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels: ...
+spec:
+  replicas: 2
+  selector: ...
+  template: ...
+```
+
+`nginx-service.yaml`
+
+```yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector: ...
+  ports: ...
+```
+
+- Every Configuration File has 3 Parts :
+
+1. `metadata`:
+
+   - `metadata` the metadata
+
+   - the `name` of the component, and more...
+
+     ![](22.png)
+
+2. `spec`ification:
+
+   - `apiVersion` - each component has a different apiVersion (look them up)
+
+   - `kind` is what kind of Component is this? eg. `Deployment` or `Service`
+
+   - `spec` the specification of the component
+
+   - attributes of `spec` are SPECIFIC to the `kind` of component you are creating. Deploymen has its own spec attributes and Service has its own spec attributes etc.
+
+     ![](23.png)
+
+3. `status`:
+
+   - it is automatically generated and added by Kubernetes
+
+   - it uses this to compare the Desired State (in the specification) to the Actual State and is the basis of the Self-Healing aspect of Kubernetes
+
+     ![](24.png)
+
+   - Where does that `status` data come from? It comes from the `etcd` in the Master Node (Control Plane)
+
+   - The Cluster Brain one of the Master Processes that stores the Cluster Data
+
+   - The `etcd` holds the current status of ANY Kubernetes Component
+     ![](25.png)
+
+### Format of a Kubernetes Configuration File
+
+- `yaml` is a human friendly data serialization standard for all programming languages
+
+- but it is very strict about `indentation`!
+
+- you should store the configuration files with your application code, or it can have its own git repository for it's configuration files
