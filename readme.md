@@ -24,7 +24,7 @@
 
 - the `Virtual Network` spans all of the Nodes that are part of the Cluster. It turns all of the Nodes inside of the Cluster into one powerful machine that has the sum of all the resources of each indivudal Node.
 
-![](02.png)
+![](images/02.png)
 
 - The Master Nodes on the Control Plane only have a handlful of master processes, but are much more important, because if you lose a Master Node you can no longer access the Cluster anymore, so that means you have to have a backup of your Master Node, so in Production environments you would have at least 2 Masters inside your Kubernetes Cluster.
 
@@ -34,7 +34,7 @@
 
 - Components: `Pod`, `Service`, `Ingress`, `ConfigMap`, `Secret`, `Deployment`, `StatefulSet`, `DaemonSet`
 
-![](03.png)
+![](images/03.png)
 
 ### Node and Pod
 
@@ -44,7 +44,7 @@
 - Each Pod gets it's own IP Address (NOT the Container) and each Pod can communicate with each other using that IP Address
 - Pods are Ephemeral, they can be lost very easily, and it will get replaced, but the new Pod that replaces it will get a new IP Address (which is inconvenient if you are communicating with the IP Address) and so another component of Kubernetes: Service is used.
 
-![](04.png)
+![](images/04.png)
 
 ### Service and Ingress
 
@@ -55,24 +55,24 @@
 - The Node can have an External Service with a port eg. http://123.456.789.100:8080/ but that is not great for Production, we would prefer to have a domain name etc. and for that we have another component Ingress.
 - So instead of Service, the request first goes to Ingress, which does the forwarding to the Service.
 
-![](05.png)
+![](images/05.png)
 
 ### ConfigMap and Secret
 
 - Where do you usually configure the Endpoint or URL? You usually do it in the application or environment variable, but its usually inside the built image of the application. If the endpoint of the service or service name changed you would have to adjust that URL in the application, re-build the image, push it to dockerhub, pull it into your pod etc. This is a headache. Kubernetes has `ConfigMap` to solve this problem.
 
-![](06.png)
+![](images/06.png)
 
 - It is your External Configuration of your application
 - ConfigMap contains URL of a Database or other services that you use, and in Kubernetes you connect it to the Pod so that the Pod gets the data that ConfigMap contains. So you just adjust the ConfigMap, you don't have to build a new image.
 
-![](07.png)
+![](images/07.png)
 
 - Also we need a database user and password for example, but we should NOT put these in a ConfigMap it is insecure. For this purpose Kubernetes has `Secret`. Secret is just like ConfigMap but it is used to store Secret Data (credentials) but it is stored in base64encoded format, which is not encrypted by default, so it is meant to be encryptyed using third party tools in Kubernetes. And their are tool sfor this from cloud providers or third party tools to encrypt your Secrets.
 
 - You reference Secret in the Pod, so the Pod can see that data and read the Secret, you can use the Data from ConfigMap or Secret inside of your application Pod using environment variables.
 
-![](08.png)
+![](images/08.png)
 
 ### Volume
 
@@ -83,7 +83,7 @@
 - So when the Database Pod (or Container) gets restarted all the Data will there persisted.
 - Kubernetes Cluster EXPLICLITLY does NOT manage any data persistence. You are responsible for backing up the data, replicating and managing it.
 
-![](09.png)
+![](images/09.png)
 
 ### Deployment and StatefulSet
 
@@ -96,31 +96,31 @@
 - You can scale up or scale down the number of Pods that you need.
 - Remember Pod is a layer of abstraction on top of containers, and so Deployment is another abstraction on top of Pods which makes it more convenient to interact with the Pods, replicate them, and do other configuration.
 
-![](10.png)
+![](images/10.png)
 
 - So if one of the Replicas of your "application" Pod will die the Service will forward the Requests to another
 
-![](11.png)
+![](images/11.png)
 
 - What if the Database Pod died? Yoru application still wouldn't be accesible... So we need a Database Replica... BUT WE CAN'T REPLICATE a DATABASE using a Deployment. The reason for this is the Database has a STATE meaning its Data, if we have Replicas of a Database Pod they would all have to access the same shared Database Storage and there you would need a mechanism of which Pods are currently WRITING to that storage or which Pods are currently READING from that Storage in order to avoid Data inconsistencies. And that mechanism in addition to the replicating feature is offered by another Kubernetes component called `StatefulSet`. It is mean't specifically for Applications like Databases (Stateful Apps). StatefulSet takes care of Replicating the Pods and Scaling them up or down, but making sure the Databse reads or writes are Synchronised so that no Database inconsistencies are offered.
 
-![](12.png)
-![](13.png)
-![](14.png)
-![](15.png)
+![](images/12.png)
+![](images/13.png)
+![](images/14.png)
+![](images/15.png)
 
 - WARNING: Deploying StatefulSet in a Kubernetes Cluster is not easy and can be tedious. So Databases are often hosted outside of the Kubernetes Cluster. And just have the Deployments that replicate and scale with no problem inside of the Kubernetes Cluster and communicate with the External Database.
 
 - So now even if one Node crashes we still have another Node running until the other gets replicated. So we can avoid downtime.
 
-![](16.png)
+![](images/16.png)
 
 ## Summary
 
-![](17.png)
-![](18.png)
-![](19.png)
-![](20.png)
+![](images/17.png)
+![](images/18.png)
+![](images/19.png)
+![](images/20.png)
 
 ## Kubernetes Configuration
 
@@ -189,7 +189,7 @@ spec:
 
 - For example, since we have declared that we wanted 2 Replica Pods of my-app Deployment to be run in the Cluster and one of those Pods dies, the Controller Manager sees that this Desired State and Actual State are now different. The Desired State is 2 and the Actual State is 1. It goes to work to make sure that this Desired State is recovered, automatically restarting the 2nd Replica of that Pod.
 
-![](21.png)
+![](images/21.png)
 
 ### 3 Parts of a Kubernetes Configuration File
 
@@ -227,7 +227,7 @@ spec:
 
    - the `name` of the component, and more...
 
-     ![](22.png)
+     ![](images/22.png)
 
 2. `spec`ification:
 
@@ -239,7 +239,7 @@ spec:
 
    - attributes of `spec` are SPECIFIC to the `kind` of component you are creating. Deploymen has its own spec attributes and Service has its own spec attributes etc.
 
-     ![](23.png)
+     ![](images/23.png)
 
 3. `status`:
 
@@ -247,7 +247,7 @@ spec:
 
    - it uses this to compare the Desired State (in the specification) to the Actual State and is the basis of the Self-Healing aspect of Kubernetes
 
-     ![](24.png)
+     ![](images/24.png)
 
    - Where does that `status` data come from? It comes from the `etcd` in the Master Node (Control Plane)
 
@@ -255,7 +255,7 @@ spec:
 
    - The `etcd` holds the current status of ANY Kubernetes Component
 
-     ![](25.png)
+     ![](images/25.png)
 
 ### Format of a Kubernetes Configuration File
 
@@ -276,7 +276,7 @@ spec:
 - Master Nodes and Worker Nodes have their own separate responsibility
 
 - You would have separate virtual or physical machines that each represent a Node
-  ![](26.png)
+  ![](images/26.png)
 
 - If you want to test something on your local environment or want to try something out, deploying a new application or new components.. obviously setting up a Cluster like this will be difficult if you don't have enough resources.
 
@@ -286,7 +286,7 @@ spec:
 
 - And the Node will have a `Docker container runtime pre-installed`, so you will be able to run the Pods with Containers on this Node.
 
-  ![](27.png)
+  ![](images/27.png)
 
 ## `kubectl`
 
@@ -300,17 +300,17 @@ spec:
 
 - Once the `kubectl` submits commands to the API Server. The Worker Processes on `minikube` Node will actually make it happen. The Worker Processes enable Pods to run on Node. To create Pods, create Services, destroy Pods etc.
 
-![](28.png)
+![](images/28.png)
 
 - `kubectl` is not just for `minikube` Cluster, if you have a Cloud Cluster or a Hybrid Cluster, `kubectl` is the tool to interact with ANY type of Kubernetes setup
 
-![](29.png)
+![](images/29.png)
 
 ## Install & Run `minikube`
 
 - `minikube` can run either as a Container or a Virtual Machine, so we need either a Container Runtime or a Virtual Machine installed on our system.
 
-![](30.png)
+![](images/30.png)
 
 - And this will be the driver for `minikube`. https://minikube.sigs.k8s.io/docs/drivers/ is a list of all the supported drivers and Docker is the preferred driver.
 
@@ -318,7 +318,7 @@ spec:
   - `minikube` installation comes with Docker pre-installed to run the containers in the cluster.
   - But Docker as the driver for `minikube` means we are hosting `minikube` as a container on our local machine.
 
-![](31.png)
+![](images/31.png)
 
 - So we need Docker installed on our machine before we can use `minikube`
 
