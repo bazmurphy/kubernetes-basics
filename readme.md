@@ -254,6 +254,7 @@ spec:
    - The Cluster Brain one of the Master Processes that stores the Cluster Data
 
    - The `etcd` holds the current status of ANY Kubernetes Component
+
      ![](25.png)
 
 ### Format of a Kubernetes Configuration File
@@ -263,3 +264,81 @@ spec:
 - but it is very strict about `indentation`!
 
 - you should store the configuration files with your application code, or it can have its own git repository for it's configuration files
+
+## `minikube`
+
+- Usually in a Kubernetes world when you are setting up a production cluster it will look like this:
+
+- You will have Multiple Masters (at least two)
+
+- You will have Multiple Worker Nodes
+
+- Master Nodes and Worker Nodes have their own separate responsibility
+
+- You would have separate virtual or physical machines that each represent a Node
+  ![](26.png)
+
+- If you want to test something on your local environment or want to try something out, deploying a new application or new components.. obviously setting up a Cluster like this will be difficult if you don't have enough resources.
+
+- For this there is an open source tool called `minikube`
+
+- `minikube` is one Node Cluster where the Master Processes and Worker Processes both run on one Node.
+
+- And the Node will have a `Docker container runtime pre-installed`, so you will be able to run the Pods with Containers on this Node.
+
+  ![](27.png)
+
+## `kubectl`
+
+- Now you have a virtual Node on your local machine that represents `minikube` you need some way to interact with the Cluster, you need a way to create Kubernetes Components on that node.
+
+- We do this using `kubectl` which is a Command Line Tool for Kubernetes Clusters
+
+- Remember `minikube` runs both Master and Worker processes in a single Node, one of the master processes API Server is the main entry point into the Kubernetes Cluster, if you want to configure anything or create any component you first have to talk to the API Server with different clients, like UI/Dashboard, API, or CLI which is `kubectl`
+
+- `kubectl` is the most powerful of the 3 clients^ you can do anything in Kubernetes that you want
+
+- Once the `kubectl` submits commands to the API Server. The Worker Processes on `minikube` Node will actually make it happen. The Worker Processes enable Pods to run on Node. To create Pods, create Services, destroy Pods etc.
+
+![](28.png)
+
+- `kubectl` is not just for `minikube` Cluster, if you have a Cloud Cluster or a Hybrid Cluster, `kubectl` is the tool to interact with ANY type of Kubernetes setup
+
+![](29.png)
+
+## Install & Run `minikube`
+
+- `minikube` can run either as a Container or a Virtual Machine, so we need either a Container Runtime or a Virtual Machine installed on our system.
+
+![](30.png)
+
+- And this will be the driver for `minikube`. https://minikube.sigs.k8s.io/docs/drivers/ is a list of all the supported drivers and Docker is the preferred driver.
+
+- This maybe confusing because inside the Kubernetes Cluster Pods we run Docker Containers.
+  - `minikube` installation comes with Docker pre-installed to run the containers in the cluster.
+  - But Docker as the driver for `minikube` means we are hosting `minikube` as a container on our local machine.
+
+![](31.png)
+
+- So we need Docker installed on our machine before we can use `minikube`
+
+- To install `minikube`:
+  `curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64`
+  `sudo install minikube-linux-amd64 /usr/local/bin/minikube`
+
+- To start it: `minikube start`, we can specify a driver eg. `minikube start --driver docker`
+
+- We can now interact with our Cluster using `kubectl`
+
+- Display all the Nodes in the Cluster: `kubectl get node`
+
+  ```
+  NAME       STATUS   ROLES           AGE     VERSION
+  minikube   Ready    control-plane   2m27s   v1.27.4
+  ```
+
+- So we have a Kubernetes Cluster running locally on our machine, and we can start deploying applications in it.
+
+- We interact with the `minikube` cluster using `kubectl` Command Line Tool
+
+- `minikube` is for the startup and deleting the Cluster, but everything else we do through `kubectl`
