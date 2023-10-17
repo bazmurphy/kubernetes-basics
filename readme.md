@@ -856,10 +856,10 @@ minikube   Ready    control-plane   15h   v1.27.4   192.168.49.2   <none>       
 
 - We can also port forward using `kubectl port-forward service/webapp-service 80:3000`
 
-```sh
-$ kubectl port-forward service/webapp-service 80:3000
-Forwarding from 127.0.0.1:80 -> 3000
-Forwarding from [::1]:80 -> 3000
-```
+  ```sh
+  $ kubectl port-forward service/webapp-service 80:3000
+  Forwarding from 127.0.0.1:80 -> 3000
+  Forwarding from [::1]:80 -> 3000
+  ```
 
 - And then visit http://localhost:80
