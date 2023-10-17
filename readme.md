@@ -127,7 +127,7 @@
 - All the configuration goes in a Kubernetes Cluster goes through a Master Node (Control Planet) with a process called API Server
 - The UI, or API, or CLI all send their Configuration Requests to the API Server which is the only entry point into the Cluster, and the requests have to be in YAML or JSON format.
 
-```yml
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -155,12 +155,12 @@ spec:
 ```
 
 - With this we are sending a request to configure a component called Deployment which is basically a template/blueprint for creating Pods.
-  ```yml
+  ```yaml
   kind: Deployment
   ```
 - In this specific example we tell Kubernetes to create 2 replica Pods
 
-  ```yml
+  ```yaml
   replicas: 2
   selector:
     matchLabels:
@@ -169,7 +169,7 @@ spec:
 
 - With each Pod replica having a container based on `my-image` running inside
 
-  ```yml
+  ```yaml
   containers:
     - name: my-app
       image: my-image
@@ -177,7 +177,7 @@ spec:
 
 - In addition to that we configure what the Environment Variables and Port Number inside the Container inside of the Pod
 
-  ```yml
+  ```yaml
   env:
     - name: SOME_ENV
       value: $SOME_ENV
@@ -193,9 +193,9 @@ spec:
 
 ### 3 Parts of a Kubernetes Configuration File
 
-`nginx-deployment.yaml`
+`nginx-deployment.yaml` :
 
-```yml
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -209,7 +209,7 @@ spec:
 
 `nginx-service.yaml`
 
-```yml
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -342,3 +342,476 @@ spec:
 - We interact with the `minikube` cluster using `kubectl` Command Line Tool
 
 - `minikube` is for the startup and deleting the Cluster, but everything else we do through `kubectl`
+
+# Demo Project
+
+![](images/32.png)
+
+![](images/33.png)
+
+## MongoDB Endpoint -> ConfigMap
+
+- Documentation for `ConfigMap` https://kubernetes.io/docs/concepts/configuration/configmap/
+
+- `mongo-config.yaml` (ConfigMap) will hold the Mongo URL
+
+```yaml
+apiVersion: v1
+kind: ConfigMap # ConfigMap (keyword)
+metadata:
+  name: mongo-config # an arbitary name
+data: # the actual contents - key-value pairs that we define as external configuration
+  mongo-url: mongo-service # the value will be the Service that we will create for the Mongo Application
+```
+
+![](images/34.png)
+
+![](images/35.png)
+
+![](images/36.png)
+
+## MongoDB User & Password -> Secret
+
+- Documentation for `Secret` https://kubernetes.io/docs/concepts/configuration/secret/
+
+- `mongo-secret.yaml` (Secret) will hold the Mongo User and Pass
+
+```yaml
+apiVersion: v1
+kind: Secret # Secret keyword
+metadata:
+  name: mongo-secret # an arbitrary name
+type: Opaque # the generic type for defining Secret data key-value pairs
+data: # the actual contents, the key-value pairs
+  # the values in Secret are base64 encoded
+  mongo-user: bW9uZ291c2Vy # mongouser encoded in base64
+  mongo-password: bW9uZ29wYXNzd29yZA== # mongopassword encoded in base64
+```
+
+![](images/37.png)
+
+![](images/38.png)
+
+- Now when we create Deployments we can reference any of the values defined in our ConfigMap or Secret
+
+![](images/39.png)
+
+## MongoDB Application with Internal Service
+
+- Create a configuration file for Deployment & Service (you can have separate files for them, but it is a common thing to put them together because all the Deployments need Services)
+
+### Deployment
+
+- Documentation for `Deployment` https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+- Mongo `Deployment` in `mongo.yaml` :
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment # Deployment keyword
+metadata:
+  name: mongo-deployment # an arbitrary name
+  labels: # this is not mandatory in Deployment but good to have
+    app: mongo
+spec:
+  replicas: 1 # this defines how many Pods you want to create
+  selector: # this matches the Label to associate the Pod to the Deployment
+    matchLabels:
+      app: mongo # a key-value pair to use for matching
+  template:
+    metadata:
+      labels:
+        app: mongo # the label we give the Mongo App containers
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:latest # create Pods with the image mongo:latest
+          ports:
+            - containerPort: 27017 # this port is exposed and listening for incoming connections
+```
+
+- `Deployment` has `metadata` and `spec`
+
+- Inside of `Deployment` `spec` is `template` which is the configuration of the Pod within the configuration of `Deployment`. Notice it has its own `metadata` and own `spec`. So `template` configures the Pod.
+
+- Inside of the `template` `spec` we have the definition of `containers`. This is a list of containers, you can have multiple containers in a Pod, but mostly one main application per Pod. Here we define which `image` and which `port`
+
+- Search on DockerHub for the Mongo Image https://hub.docker.com/_/mongo/ then select `Tags` to see available Images and choose an Image eg. `mongo:latest`
+
+- Under `Overview` : The MongoDB server in the image listens on the standard MongoDB port, `27017`, so connecting via Docker networks will be the same as connecting to a remote mongod.
+
+![](images/40.png)
+
+- We have `labels` under `metadata`
+
+- In Kubernetes you can give any Component a Label (it is a key-value pair). So you can label anything from Pod to Deployment etc. `labels` are additional identifiers of the Components in addition to the `name`. So you can identify and address specific Components using their `labels`.
+
+![](images/41.png)
+
+- Why do we need `labels`? When we have multiple replicas of the same Pod, each Pod will get a Unique Name `mongo-101`, `mongo-111`, `mongo-210` however they can share the same label eg. `app:mongo` and that's why in the `metadata` of the Pod we always have `labels` so for Pods `labels` is a required field.
+
+- For other Components like `Deployment` `labels` is optional but it is a good practice to set them.
+
+![](images/42.png)
+
+- In the `Deployment` `spec` we have `selector` and under that `matchLabels`
+
+- When we create Pod replicas, how does Kubernetes know which Pods belong to which `Deployment`?
+
+- That is defined using `selector` and `matchLabels`
+
+- `selector` is in the `spec` of the `Deployment` and this defines that all the Pods that match the `labels` eg. `app:mongo` belong to this `Deployment`.
+
+- The key-value pair can be anything `mykey:myvalue`, but it is common practice to use `app:value` when labelling your Applications.
+
+- The `Deployment` then can understand which Pods belong to it by matching those `labels`
+
+- `replicas` defines how many Pods we want to create using this Blueprint
+
+![](images/43.png)
+
+### Service
+
+- Documentation for `Servoce` https://kubernetes.io/docs/concepts/services-networking/service/
+
+- Mongo `Service` in `mongo.yaml` :
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  # this Service name is the name we reference in our ConfigMap as the Mongo End Point
+  name: mongo-service # an arbitrary name
+spec:
+  selector: # the Service needs to know which Pods to forward the requests to
+    app: mongo # so this should match the label of the Pods
+  ports:
+    - protocol: TCP
+      # Service is accessible in the Cluster using its own IP Address and the Port
+      # It can be any port but it is common practice to keep it the same as the targetPort to keep things simple.
+      port: 27017
+      # The Port of the Pods that belong to the Service that the Service should Forward the Request to
+      # So the targetPort should ALWAYS be the same as the containerPort because that is the Port in the Containers where the Application is accessible
+      targetPort: 27017
+```
+
+- we give it a `name` `mongo-service` which is referenced in the `ConfigMap` created earlier. This is the Mongo End Point.
+
+- Under `spec` we have `selector` because the Service needs to know which Pods to forward the Requests to, so it uses the `label` selector.
+
+![](images/44.png)
+
+- The Service is accessible in the Cluster using its own IP Address and the `port` we define. It can be any port but it is common practice to keep it the same as the `targetPort` to keep things simple.
+
+- the `targetPort` is the port of the Pods that belong to the Service, that the Service should Forward the Request to. So the `targetPort` should ALWAYS be the same as the `containerPort` in `Deployment` because that is the port in the Containers where the Application is accessible.
+
+![](images/45.png)
+
+![](images/46.png)
+
+![](images/47.png)
+
+## Our own WebApp with External Service -> Deployment & Service
+
+- We can just copy most of the above and make adjustments.
+
+- The image is a simple NodeJS API
+
+- WebApp `Deplomyment` in `webapp.yaml` :
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment # Deployment keyword
+metadata:
+  name: webapp-deployment # an arbitrary name
+  labels: # this is not mandatory in Deployment but good to have
+    app: webapp
+spec:
+  replicas: 1 # this defines how many Pods you want to create
+  selector: # this matches the Label to associate the Pod to the Deployment
+    matchLabels:
+      app: webapp # a key-value pair to use for matching
+  template:
+    metadata:
+      labels:
+        app: webapp # the label we give the Mongo App containers
+    spec:
+      containers:
+        - name: webapp
+          image: nanajanashia/k8s-demo-app:v1.0 # create Pods with the image mongo:latest
+          ports:
+            - containerPort: 3000 # this port is exposed and listening for incoming connections
+```
+
+- WebApp `Service` in `webapp.yaml` :
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  # this Service name is the name we reference in our ConfigMap as the Mongo End Point
+  name: webapp-service # an arbitrary name
+spec:
+  selector: # the Service needs to know which Pods to forward the requests to
+    app: webapp # so this should match the label of the Pods
+  ports:
+    - protocol: TCP
+      # Service is accessible in the Cluster using its own IP Address and the Port
+      # It can be any port but it is common practice to keep it the same as the targetPort to keep things simple.
+      port: 3000
+      # The Port of the Pods that belong to the Service that the Service should Forward the Request to
+      # So the targetPort should ALWAYS be the same as the containerPort because that is the Port in the Containers where the Application is accessible
+      targetPort: 3000
+```
+
+![](images/48.png)
+
+## Pass Secret data to Mongo Deployment
+
+- We need to set the MongoDB User and Password on Startup, and in the Mongo Image documentation on DockerHub we can see the Envrionment Variable Names:
+
+```yaml
+environment:
+  MONGO_INITDB_ROOT_USERNAME: root
+  MONGO_INITDB_ROOT_PASSWORD: example
+```
+
+- And these are usually required fields in most of the Database Images, so we must set them.
+
+- So how do we pass these Environment Variables to the Mongo Application running inside a Container?
+
+```yaml
+spec:
+  containers:
+    - name: mongodb
+      image: mongo:latest
+      ports:
+        - containerPort: 27017
+      env: # here we use env, which is a list of Environment Variables
+        - name: MONGO_INITDB_ROOT_USERNAME
+          # value: myuser  # we could directly write them here but instead:
+          valueFrom: # we use "valueFrom" to reference them from the Secrets configuration
+            secretKeyRef: # using "secretKeyRef"
+              name: mongo-secret # this is the name of the Secret configuration
+              key: mongo-user # this is the key name
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-password
+```
+
+- In the `Deployment` `spec` `template` `spec` `containers` we use the `env` keyword.
+
+- Each environment variable must have a `name` and a `value`.
+
+- We can directly hardcode the value. Or if we want to get it from a `ConfigMap` or `Secret` we use the `valueFrom` keyword.
+
+- In the case of a Secret we use `secretKeyRef` and pass it the `metadata` `name` from the `Secret` component
+
+- We then choose which `key` we want to use to access it's `value`.
+
+- Now when the Container starts a User with those credentials will be created.
+
+![](images/49.png)
+
+![](images/50.png)
+
+## Pass ConfigMap and Secret data to WebApp Deployment
+
+- When our WebApp starts it will need to connect to the Database, so we need to give it information about the Database Endpoint, and which Username and Password to use to Authenticate with the Database.
+
+- So again in the `Deployment` `spec` `template` `spec` `containers` we use the `env` keyword.
+
+- In the case of a ConfigMap we use `configMapKeyRef` and pass it the `metadata` `name` from the `ConfigMap` component
+
+- We then choose which `key` we want to use to access it's `value`
+
+- Now when the Container starts it has everything it needs to connect to the Database
+
+![](images/51.png)
+
+```yaml
+spec:
+  containers:
+    - name: webapp
+      image: nanajanashia/k8s-demo-app:v1.0
+      ports:
+        - containerPort: 3000
+      env: # we pass the environment variables to the container
+        - name: USER_NAME # this is defined in the Image^
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret # this is the name of the Secret configuration
+              key: mongo-user # this is the key name
+        - name: USER_PWD # this is defined in the Image^
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret # this is the name of the Secret configuration
+              key: mongo-password # this is the key name
+        - name: DB_URL # this is defined in the Image^
+          valueFrom:
+            configMapKeyRef: # this is how to reference a key in a ConfigMap
+              name: mongo-config # this is the name of the Secret configuration
+              key: mongo-url # this is the key name
+```
+
+- Using `ConfigMap` and `Secret` we can now pass these values to as many Containers as we need without reptition using KeyRef.
+
+![](images/52.png)
+
+## Configure External Service on WebApp
+
+- We now need to make the WebApp accessible from the outside. We want to be able to type in a URL and access our Web Application from the browser.
+
+![](images/53.png)
+
+- We will need to adjust the WebApp `Service`, at the moment both `Services` are Internal (by default). We need to set a `type` which is by default `ClusterIP` (an Internal Service type). But if we set `type` to `NodePort` (an External Service type)
+
+- NodePort requires a third Port called `nodePort`. This is a port that will open on the Kubernetes Nodes on which the application will be accessible `<NodeIP>:<NodePort>`. So we will be able to access this WebApp `Service` on this Port which will then be able to access the Pods behind it.
+
+- NodePort range is defined in Kubernetes and must be between `3000` - `32767`. In this example we will use `30100`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+spec:
+  type: NodePort # this makes the Service an External Service type (the default being ClusterIP - Internal Service type)
+  selector:
+    app: webapp
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      # nodePort is a port that will open a port into your Node <NodeIP>:<NodePort>
+      nodePort: 30100
+```
+
+![](images/54.png)
+
+## Deploy all resources in Minikube Cluster
+
+- We will now create these Components one by one
+
+- `kubectl get pod` No resources found in default namespace.
+
+- There are currently no Components
+
+- First we need to make the `ConfigMap` and `Secret` because they need to be there when we create Mongo Database and WebApp `Deployment`s because they reference those.
+
+- `apply` manages applications through files defining Kubernetes resources: `kubectl apply -f <filename.yaml>`
+
+```sh
+$ kubectl apply -f mongo-config.yaml
+configmap/mongo-config created
+```
+
+```sh
+$ kubectl apply -f mongo-secret.yaml
+secret/mongo-secret created
+```
+
+- now we will create the Mongo Database because our WebApp depends on it, so it should start first
+
+```sh
+$ kubectl apply -f mongo.yaml
+deployment.apps/mongo-deployment created
+service/mongo-service created
+```
+
+- now we can create the WebApp
+
+```sh
+$ kubectl apply -f webapp.yaml
+deployment.apps/webapp-deployment created
+service/webapp-service created
+```
+
+## Interacting with the Kubernetes Cluster
+
+- Let's now check all the Pods and Components that were created in the Cluster using `kubectl get all`
+
+```sh
+$ kubectl get all
+NAME                                    READY   STATUS    RESTARTS   AGE
+pod/mongo-deployment-766444cdf6-f8qnl   1/1     Running   0          2m34s
+pod/webapp-deployment-f8d7df85d-f7sqs   1/1     Running   0          64s
+
+NAME                     TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+service/kubernetes       ClusterIP   10.96.0.1        <none>        443/TCP          15h
+service/mongo-service    ClusterIP   10.100.132.182   <none>        27017/TCP        3m53s
+service/webapp-service   NodePort    10.110.188.108   <none>        3000:30100/TCP   64s
+
+NAME                                READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/mongo-deployment    1/1     1            1           2m34s
+deployment.apps/webapp-deployment   1/1     1            1           64s
+
+NAME                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/mongo-deployment-766444cdf6   1         1         1       2m34s
+replicaset.apps/webapp-deployment-f8d7df85d   1         1         1       64s
+```
+
+- We don't see `ConfigMap` or `Secret` here. We can get them with `kubectl get configmap` and `kubectl get secret`.
+
+```sh
+$ kubectl get configmap
+NAME               DATA   AGE
+kube-root-ca.crt   1      15h
+mongo-config       1      7m37s
+```
+
+```sh
+$ kubectl get secret
+NAME           TYPE     DATA   AGE
+mongo-secret   Opaque   2      6m27s
+```
+
+- `kubectl` is a very powerful tool, use the `--help` flag to see all the subcommands : `kubectl --help`
+
+- And for each subcommand eg. `get` you can also use `--help` : `kubectl get --help`
+
+- If you want to see more details you can use `kubectl describe` and then give it the type and name of a Component : `kubectl describe service webapp-service`
+
+- If you want to check the logs of the Pods you can use `kubectl logs <podName>` : `kubectl logs webapp-deployment-f8d7df85d-f7sq` and you can stream the logs using `-f`
+
+```sh
+$ kubectl logs webapp-deployment-f8d7df85d-f7sqs
+app listening on port 3000!
+```
+
+## Validate that the WebApp is accessible from the Browser
+
+- We use `kubectl get svc`
+
+```sh
+$ kubectl get svc
+NAME             TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+kubernetes       ClusterIP   10.96.0.1        <none>        443/TCP          15h
+mongo-service    ClusterIP   10.100.132.182   <none>        27017/TCP        11m
+webapp-service   NodePort    10.110.188.108   <none>        3000:30100/TCP   8m55s
+```
+
+- How do we access the Service from the Browser? Which IP Addres is it accessible at?
+
+- The `NodePort` Service is always accessible at the IP Address of the Cluster Node, so all the Worker Nodes that the Cluster has.
+
+- In this case we only have 1 Machine which is the `minikube`
+
+- So we need the IP Address of the `minikube` to get that we use `minikube ip`
+
+```sh
+$ minikube ip
+192.168.49.2
+```
+
+- Or using Kubernetes we can use `kubectl get node -o wide` -o denotes output and wide is a longer output, this gives yout he IP Address of the Node (INTERNAL-IP)
+
+```sh
+$ kubectl get node -o wide
+NAME       STATUS   ROLES           AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION                      CONTAINER-RUNTIME
+minikube   Ready    control-plane   15h   v1.27.4   192.168.49.2   <none>        Ubuntu 22.04.2 LTS   5.15.90.1-microsoft-standard-WSL2   docker://24.0.4
+```
+
+- So let's use this IP and the NodePort to check the WebApp in the Browser: http://192.168.49.2:30100/

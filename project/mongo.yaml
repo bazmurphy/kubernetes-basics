@@ -1,0 +1,56 @@
+# https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+apiVersion: apps/v1
+kind: Deployment # Deployment keyword
+metadata:
+  name: mongo-deployment # an arbitrary name
+  labels: # this is not mandatory in Deployment but good to have
+    app: mongo
+spec:
+  replicas: 1 # this defines how many Pods you want to create
+  selector: # this matches the Label to associate the Pod to the Deployment
+    matchLabels:
+      app: mongo # a key-value pair to use for matching
+  template:
+    metadata:
+      labels:
+        app: mongo # the label we give the Mongo App containers
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:latest # create Pods with the image mongo:latest
+          ports:
+            - containerPort: 27017 # this port is exposed and listening for incoming connections
+          env: # here we use env, which is a list of Environment Variables
+            - name: MONGO_INITDB_ROOT_USERNAME
+              # value: myuser  # we could directly write them here but instead:
+              valueFrom: # we use "valueFrom" to reference them from the Secrets configuration
+                secretKeyRef: # using "secretKeyRef"
+                  name: mongo-secret # this is the name of the Secret configuration
+                  key: mongo-user # this is the key name
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-password
+
+--- # you can use this triple line to say another configuration will start here
+
+# https://kubernetes.io/docs/concepts/services-networking/service/
+
+apiVersion: v1
+kind: Service
+metadata:
+  # this Service name is the name we reference in our ConfigMap as the Mongo End Point
+  name: mongo-service # an arbitrary name
+spec:
+  selector: # the Service needs to know which Pods to forward the requests to
+    app: mongo # so this should match the label of the Pods
+  ports:
+    - protocol: TCP
+      # Service is accessible in the Cluster using its own IP Address and the Port
+      # It can be any port but it is common practice to keep it the same as the targetPort to keep things simple.
+      port: 27017
+      # The Port of the Pods that belong to the Service that the Service should Forward the Request to
+      # So the targetPort should ALWAYS be the same as the containerPort because that is the Port in the Containers where the Application is accessible
+      targetPort: 27017

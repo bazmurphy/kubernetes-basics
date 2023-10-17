@@ -1,0 +1,8 @@
+# https://kubernetes.io/docs/concepts/configuration/configmap/
+
+apiVersion: v1
+kind: ConfigMap # ConfigMap keyword
+metadata:
+  name: mongo-config # an arbitary name
+data: # the actual contents - key-value pairs that we define as external configuration
+  mongo-url: mongo-service # the value will be the Service that we will create for the Mongo Application

@@ -1,0 +1,63 @@
+# https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+apiVersion: apps/v1
+kind: Deployment # Deployment keyword
+metadata:
+  name: webapp-deployment # an arbitrary name
+  labels: # this is not mandatory in Deployment but good to have
+    app: webapp
+spec:
+  replicas: 1 # this defines how many Pods you want to create
+  selector: # this matches the Label to associate the Pod to the Deployment
+    matchLabels:
+      app: webapp # a key-value pair to use for matching
+  template:
+    metadata:
+      labels:
+        app: webapp # the label we give the Mongo App containers
+    spec:
+      containers:
+        - name: webapp
+          image: nanajanashia/k8s-demo-app:v1.0 # create Pods with the image mongo:latest
+          ports:
+            - containerPort: 3000 # this port is exposed and listening for incoming connections
+          env: # we pass the environment variables to the container
+            - name: USER_NAME # this is defined in the Image^
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret # this is the name of the Secret configuration
+                  key: mongo-user # this is the key name
+            - name: USER_PWD # this is defined in the Image^
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret # this is the name of the Secret configuration
+                  key: mongo-password # this is the key name
+            - name: DB_URL # this is defined in the Image^
+              valueFrom:
+                configMapKeyRef: # this is how to reference a key in a ConfigMap
+                  name: mongo-config # this is the name of the Secret configuration
+                  key: mongo-url # this is the key name
+
+--- # you can use this triple line to say another configuration will start here
+
+# https://kubernetes.io/docs/concepts/services-networking/service/
+
+apiVersion: v1
+kind: Service
+metadata:
+  # this Service name is the name we reference in our ConfigMap as the Mongo End Point
+  name: webapp-service # an arbitrary name
+spec:
+  type: NodePort # this makes the Service an External Service type (the default being ClusterIP - Internal Service type)
+  selector: # the Service needs to know which Pods to forward the requests to
+    app: webapp # so this should match the label of the Pods
+  ports:
+    - protocol: TCP
+      # Service is accessible in the Cluster using its own IP Address and the Port
+      # It can be any port but it is common practice to keep it the same as the targetPort to keep things simple.
+      port: 3000
+      # The Port of the Pods that belong to the Service that the Service should Forward the Request to
+      # So the targetPort should ALWAYS be the same as the containerPort because that is the Port in the Containers where the Application is accessible
+      targetPort: 3000
+      # nodePort is a port that will open a port into your Node <NodeIP>:<NodePort>
+      nodePort: 30100
