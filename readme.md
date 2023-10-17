@@ -815,3 +815,51 @@ minikube   Ready    control-plane   15h   v1.27.4   192.168.49.2   <none>       
 ```
 
 - So let's use this IP and the NodePort to check the WebApp in the Browser: http://192.168.49.2:30100/
+
+- But I cannot seem to access it...
+
+- The current proposed solution: `minikube service webapp-service`
+
+  ```
+  $ minikube service webapp-service
+  |-----------|----------------|-------------|-------------------------|
+  | NAMESPACE |      NAME      | TARGET PORT |           URL           |
+  |-----------|----------------|-------------|-------------------------|
+  | default   | webapp-service |        3000 | http://192.168.49.2:30100 |
+  |-----------|----------------|-------------|-------------------------|
+  🏃  Starting tunnel for service webapp-service.
+  |-----------|----------------|-------------|------------------------|
+  | NAMESPACE |      NAME      | TARGET PORT |          URL           |
+  |-----------|----------------|-------------|------------------------|
+  | default   | webapp-service |             | http://127.0.0.1:62077 |
+  |-----------|----------------|-------------|------------------------|
+  🎉  Opening service default/webapp-service in default browser...
+  ```
+
+- Why does this work ?
+
+  - Using minikube service webapp-service is a convenient way to access your application running in a Minikube cluster when you are using a Docker driver on Windows, and there are a couple of reasons why this is necessary:
+
+  - Networking and Routing in Minikube: Minikube creates a virtual machine (VM) to run a Kubernetes cluster on your local system. This VM has its own network configuration. When you deploy a service with a NodePort or LoadBalancer type in Kubernetes, the service is exposed on a specific port on the VM, not directly on your host machine (Windows in this case).
+
+  - Windows and Docker: In your case, you are using the Docker driver for Minikube. When you run Minikube with the Docker driver on Windows, it effectively runs a Kubernetes cluster inside a Docker container within a VM. This additional level of abstraction can affect how network traffic is routed from your Windows host to the Kubernetes services.
+
+  - Port Forwarding: The minikube service command sets up port forwarding to route traffic from your Windows host to the Minikube VM and then to your service. It provides a convenient way to access the service running inside the Minikube VM without having to deal with network configurations or firewall settings.
+
+  - Network Isolation: Minikube aims to provide a consistent and isolated Kubernetes environment. It does this by creating a virtual network within the VM, and it doesn't automatically expose services to your Windows host's network. This isolation is beneficial for development and testing but requires port forwarding for external access.
+
+  - Security: By default, Minikube runs in an isolated environment to avoid security risks and conflicts with other services on your Windows host. Port forwarding through minikube service allows you to control which services are accessible from your host machine.
+
+  - So, the minikube service command with port forwarding is used to bridge the gap between your Windows host and the Kubernetes services running within the Minikube VM. It provides a seamless way to access your applications during development and testing without the need to manually configure network settings or expose ports.
+
+  - It's important to note that this is specific to Minikube running with the Docker driver on Windows. In a production environment or with different Kubernetes distributions, the setup may vary, and services may be accessible without such port forwarding.
+
+- We can also port forward using `kubectl port-forward service/webapp-service 80:3000`
+
+```sh
+$ kubectl port-forward service/webapp-service 80:3000
+Forwarding from 127.0.0.1:80 -> 3000
+Forwarding from [::1]:80 -> 3000
+```
+
+- And then visit http://localhost:80
